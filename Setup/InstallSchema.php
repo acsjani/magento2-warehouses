@@ -280,6 +280,20 @@ class InstallSchema implements InstallSchemaInterface
                 ['unsigned' => true, 'nullable' => false, 'default' => 0],
                 'Is Divided into Multiple Boxes for Shipping'
             )
+            ->addColumn(
+                'deferred_stock_update',
+                \Magento\Framework\DB\Ddl\Table::TYPE_SMALLINT,
+                5,
+                ['unsigned' => true, 'nullable' => false, 'default' => '0'],
+                'Use deferred Stock update'
+            )
+            ->addColumn(
+                'use_config_deferred_stock_update',
+                \Magento\Framework\DB\Ddl\Table::TYPE_SMALLINT,
+                5,
+                ['unsigned' => true, 'nullable' => false, 'default' => '1'],
+                'Use configuration settings for deferred Stock update'
+            )
             ->addIndex(
                 $installer->getIdxName(
                     'warehouseinventory_stock_item',
