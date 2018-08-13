@@ -94,7 +94,7 @@ class Stock extends \Magento\CatalogInventory\Model\ResourceModel\Stock
      * @param int $websiteId
      * @return array
      */
-    public function lockProductsStock($productIds, $websiteId)
+    public function lockProductsStock(array $productIds, $websiteId)
     {
         if (empty($productIds)) {
             return [];
