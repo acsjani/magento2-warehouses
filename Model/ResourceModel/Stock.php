@@ -27,7 +27,6 @@ use Magento\Store\Model\StoreManagerInterface;
 class Stock extends \Magento\CatalogInventory\Model\ResourceModel\Stock
 {
 
-
     /**
      * Define main table and initialize connection
      *
@@ -87,6 +86,18 @@ class Stock extends \Magento\CatalogInventory\Model\ResourceModel\Stock
         return $final;
     }
 
+    private function getCurrentStockId()
+    {
+        $stockId = $this->storeManager->getStore()->getWebsiteId();
+        $select = $this->getConnection()->select()->from($this->getConnection()->getTableName($this->getMainTable()))
+            ->where('stock_id=?', $stockId);
+        $zone = $this->getConnection()->fetchOne($select);
+        if ($zone) {
+            return $stockId;
+        }
+        return \Magento\CatalogInventory\Model\Stock::DEFAULT_STOCK_ID;
+    }
+
     /**
      * Lock Stock Item records
      *
@@ -104,6 +115,7 @@ class Stock extends \Magento\CatalogInventory\Model\ResourceModel\Stock
         $select = $this->getConnection()->select()->from(['si' => $itemTable])
             ->join(['p' => $productTable], 'p.entity_id=si.product_id', ['type_id'])
             ->where('website_id=?', $websiteId)
+            ->where('stock_id=?', $this->getCurrentStockId())
             ->where('product_id IN(?)', $productIds)
             ->forUpdate(true);
         return $this->getConnection()->fetchAll($select);
@@ -127,7 +139,11 @@ class Stock extends \Magento\CatalogInventory\Model\ResourceModel\Stock
         }
 
         $value = $connection->getCaseSql('product_id', $conditions, 'qty');
-        $where = ['product_id IN (?)' => array_keys($items), 'website_id = ?' => $websiteId];
+        $where = [
+            'product_id IN (?)' => array_keys($items),
+            'website_id = ?' => $websiteId,
+            'stock_id = ?' => $this->getCurrentStockId()
+        ];
 
         $connection->beginTransaction();
         $connection->update($this->getTable('warehouseinventory_stock_item'), ['qty' => $value], $where);
