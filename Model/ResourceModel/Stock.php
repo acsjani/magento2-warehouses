@@ -88,8 +88,10 @@ class Stock extends \Magento\CatalogInventory\Model\ResourceModel\Stock
 
     private function getCurrentStockId()
     {
-        $stockId = $this->storeManager->getStore()->getWebsiteId();
-        $select = $this->getConnection()->select()->from($this->getConnection()->getTableName($this->getMainTable()))
+        $stockId = $this->storeManager->getStore()->getId();
+        $select = $this->getConnection()
+            ->select()
+            ->from($this->getConnection()->getTableName($this->getMainTable()))
             ->where('stock_id=?', $stockId);
         $zone = $this->getConnection()->fetchOne($select);
         if ($zone) {
