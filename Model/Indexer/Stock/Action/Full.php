@@ -24,7 +24,7 @@ namespace Eadesigndev\Warehouses\Model\Indexer\Stock\Action;
  *
  * @package Magento\CatalogInventory\Model\Indexer\Stock\Action
  */
-class Full extends \Eadesigndev\Warehouses\Model\Indexer\Stock\AbstractAction
+class Full extends \Eadesigndev\Warehouses\Model\Indexer\Stock\BaseAction
 {
     /**
      * Execute Full reindex

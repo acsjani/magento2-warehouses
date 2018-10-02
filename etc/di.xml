@@ -53,6 +53,9 @@
     <preference type="Eadesigndev\Warehouses\Model\ResourceModel\Indexer\Stock\DefaultStock"
                 for="Magento\CatalogInventory\Model\ResourceModel\Indexer\Stock\DefaultStock"/>
 
+    <preference type="Eadesigndev\Warehouses\Model\ResourceModel\Indexer\Stock\ConfigurableStock"
+                for="Magento\ConfigurableProduct\Model\ResourceModel\Indexer\Stock\Configurable"/>
+
     <preference type="Eadesigndev\Warehouses\Model\Indexer\Stock"
                 for="Magento\CatalogInventory\Model\Indexer\Stock"/>
 

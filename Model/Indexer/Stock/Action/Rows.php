@@ -24,7 +24,7 @@ namespace Eadesigndev\Warehouses\Model\Indexer\Stock\Action;
  *
  * @package Magento\CatalogInventory\Model\Indexer\Stock\Action
  */
-class Rows extends \Eadesigndev\Warehouses\Model\Indexer\Stock\AbstractAction
+class Rows extends \Eadesigndev\Warehouses\Model\Indexer\Stock\BaseAction
 {
     /**
      * Execute Rows reindex

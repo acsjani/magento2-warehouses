@@ -23,63 +23,18 @@ use Magento\Catalog\Model\ResourceModel\Product\Indexer\AbstractIndexer;
 use Magento\CatalogInventory\Model\Stock;
 use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\CatalogInventory\Api\StockConfigurationInterface;
+use Magento\Catalog\Model\Product\Attribute\Source\Status as ProductStatus;
 
 /**
  * CatalogInventory Default Stock Status Indexer Resource Model
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
-class DefaultStock extends AbstractIndexer implements \Magento\CatalogInventory\Model\ResourceModel\Indexer\Stock\StockInterface
+class DefaultStock extends \Magento\CatalogInventory\Model\ResourceModel\Indexer\Stock\DefaultStock
 {
-    /**
-     * Current Product Type Id
-     *
-     * @var string
-     */
-    protected $_typeId;
-
-    /**
-     * Product Type is composite flag
-     *
-     * @var bool
-     */
-    protected $_isComposite = false;
-
-    /**
-     * Core store config
-     *
-     * @var \Magento\Framework\App\Config\ScopeConfigInterface
-     */
-    protected $_scopeConfig;
-
     /**
      * @var QueryProcessorComposite
      */
     private $queryProcessorComposite;
-
-    /**
-     * @var StockConfigurationInterface
-     */
-    protected $stockConfiguration;
-
-    /**
-     * Class constructor
-     *
-     * @param \Magento\Framework\Model\ResourceModel\Db\Context $context
-     * @param \Magento\Framework\Indexer\Table\StrategyInterface $tableStrategy
-     * @param \Magento\Eav\Model\Config $eavConfig
-     * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
-     * @param string $connectionName
-     */
-    public function __construct(
-        \Magento\Framework\Model\ResourceModel\Db\Context $context,
-        \Magento\Framework\Indexer\Table\StrategyInterface $tableStrategy,
-        \Magento\Eav\Model\Config $eavConfig,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        $connectionName = null
-    ) {
-        $this->_scopeConfig = $scopeConfig;
-        parent::__construct($context, $tableStrategy, $eavConfig, $connectionName);
-    }
 
     /**
      * Initialize connection and define main table name
@@ -89,100 +44,6 @@ class DefaultStock extends AbstractIndexer implements \Magento\CatalogInventory\
     protected function _construct()
     {
         $this->_init('warehouseinventory_stock_status', 'product_id');
-    }
-
-    /**
-     * Reindex all stock status data for default logic product type
-     *
-     * @return $this
-     * @throws \Exception
-     */
-    public function reindexAll()
-    {
-        $this->tableStrategy->setUseIdxTable(true);
-        $this->beginTransaction();
-        try {
-            $this->_prepareIndexTable();
-            $this->commit();
-        } catch (\Exception $e) {
-            $this->rollBack();
-            throw $e;
-        }
-        return $this;
-    }
-
-    /**
-     * Reindex stock data for defined product ids
-     *
-     * @param int|array $entityIds
-     * @return $this
-     */
-    public function reindexEntity($entityIds)
-    {
-        $this->_updateIndex($entityIds);
-        return $this;
-    }
-
-    /**
-     * Set active Product Type Id
-     *
-     * @param string $typeId
-     * @return $this
-     */
-    public function setTypeId($typeId)
-    {
-        $this->_typeId = $typeId;
-        return $this;
-    }
-
-    /**
-     * Retrieve active Product Type Id
-     *
-     * @return string
-     * @throws \Magento\Framework\Exception\LocalizedException
-     */
-    public function getTypeId()
-    {
-        if ($this->_typeId === null) {
-            throw new \Magento\Framework\Exception\LocalizedException(__('Undefined product type'));
-        }
-        return $this->_typeId;
-    }
-
-    /**
-     * Set Product Type Composite flag
-     *
-     * @param bool $flag
-     * @return $this
-     */
-    public function setIsComposite($flag)
-    {
-        $this->_isComposite = (bool) $flag;
-        return $this;
-    }
-
-    /**
-     * Check product type is composite
-     *
-     * @return bool
-     * @SuppressWarnings(PHPMD.BooleanGetMethodName)
-     */
-    public function getIsComposite()
-    {
-        return $this->_isComposite;
-    }
-
-    /**
-     * Retrieve is Global Manage Stock enabled
-     *
-     * @return bool
-     */
-    protected function _isManageStock()
-    {
-        return $this->_scopeConfig->isSetFlag(
-            \Magento\CatalogInventory\Model\Configuration::XML_PATH_MANAGE_STOCK,
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
-        );
     }
 
     /**
@@ -197,6 +58,9 @@ class DefaultStock extends AbstractIndexer implements \Magento\CatalogInventory\
     {
         $connection = $this->getConnection();
         $qtyExpr = $connection->getCheckSql('cisi.qty > 0', 'cisi.qty', 0);
+        $metadata = $this->getMetadataPool()->getMetadata(\Magento\Catalog\Api\Data\ProductInterface::class);
+        $linkField = $metadata->getLinkField();
+
         $select = $connection->select()->from(
             ['e' => $this->getTable('catalog_product_entity')],
             ['entity_id']
@@ -208,6 +72,12 @@ class DefaultStock extends AbstractIndexer implements \Magento\CatalogInventory\
         )->joinInner(
             ['cisi' => $this->getTable('warehouseinventory_stock_item')],
             'cisi.stock_id = cis.stock_id AND cisi.product_id = e.entity_id',
+            []
+        )->joinInner(
+            ['mcpei' => $this->getTable('catalog_product_entity_int')],
+            'e.' . $linkField . ' = mcpei.' . $linkField
+            . ' AND mcpei.attribute_id = ' . $this->_getAttribute('status')->getId()
+            . ' AND mcpei.value = ' . ProductStatus::STATUS_ENABLED,
             []
         )->columns(
             ['qty' => $qtyExpr]
@@ -226,23 +96,6 @@ class DefaultStock extends AbstractIndexer implements \Magento\CatalogInventory\
     }
 
     /**
-     * Prepare stock status data in temporary index table
-     *
-     * @param int|array $entityIds the product limitation
-     * @return $this
-     */
-    protected function _prepareIndexTable($entityIds = null)
-    {
-        $connection = $this->getConnection();
-        $select = $this->_getStockStatusSelect($entityIds);
-        $select = $this->getQueryProcessorComposite()->processQuery($select, $entityIds);
-        $query = $select->insertFromSelect($this->getIdxTable());
-        $connection->query($query);
-
-        return $this;
-    }
-
-    /**
      * Update Stock status index by product ids
      *
      * @param array|int $entityIds
@@ -254,8 +107,6 @@ class DefaultStock extends AbstractIndexer implements \Magento\CatalogInventory\
         $select = $this->_getStockStatusSelect($entityIds, true);
         $select = $this->getQueryProcessorComposite()->processQuery($select, $entityIds, true);
         $query = $connection->query($select);
-
-
 
         $i = 0;
         $data = [];
@@ -273,27 +124,25 @@ class DefaultStock extends AbstractIndexer implements \Magento\CatalogInventory\
                 $data = [];
             }
         }
+        $this->deleteOldRecords($entityIds);
         $this->_updateIndexTable($data);
 
         return $this;
     }
 
     /**
-     * Update stock status index table (INSERT ... ON DUPLICATE KEY UPDATE ...)
+     * Delete records by their ids from index table
+     * Used to clean table before re-indexation
      *
-     * @param array $data
-     * @return $this
+     * @param array $ids
+     * @return void
+     * @throws \Magento\Framework\Exception\LocalizedException
      */
-    protected function _updateIndexTable($data)
+    private function deleteOldRecords(array $ids)
     {
-        if (empty($data)) {
-            return $this;
+        if (count($ids) !== 0) {
+            $this->getConnection()->delete($this->getMainTable(), ['product_id in (?)' => $ids]);
         }
-
-        $connection = $this->getConnection();
-        $connection->insertOnDuplicate($this->getMainTable(), $data, ['qty', 'stock_status']);
-
-        return $this;
     }
 
     /**
@@ -309,51 +158,13 @@ class DefaultStock extends AbstractIndexer implements \Magento\CatalogInventory\
     }
 
     /**
-     * @param AdapterInterface $connection
-     * @param bool $isAggregate
-     * @return mixed
-     */
-    protected function getStatusExpression(AdapterInterface $connection, $isAggregate = false)
-    {
-        $isInStockExpression = $isAggregate ? 'MAX(cisi.is_in_stock)' : 'cisi.is_in_stock';
-        if ($this->_isManageStock()) {
-            $statusExpr = $connection->getCheckSql(
-                'cisi.use_config_manage_stock = 0 AND cisi.manage_stock = 0',
-                1,
-                $isInStockExpression
-            );
-        } else {
-            $statusExpr = $connection->getCheckSql(
-                'cisi.use_config_manage_stock = 0 AND cisi.manage_stock = 1',
-                $isInStockExpression,
-                1
-            );
-        }
-        return $statusExpr;
-    }
-
-    /**
-     * @return StockConfigurationInterface
-     *
-     * @deprecated
-     */
-    protected function getStockConfiguration()
-    {
-        if ($this->stockConfiguration === null) {
-            $this->stockConfiguration = \Magento\Framework\App\ObjectManager::getInstance()
-                ->get('Magento\CatalogInventory\Api\StockConfigurationInterface');
-        }
-        return $this->stockConfiguration;
-    }
-
-    /**
      * @return QueryProcessorComposite
      */
     private function getQueryProcessorComposite()
     {
         if (null === $this->queryProcessorComposite) {
             $this->queryProcessorComposite = \Magento\Framework\App\ObjectManager::getInstance()
-                ->get('Magento\CatalogInventory\Model\ResourceModel\Indexer\Stock\QueryProcessorComposite');
+                ->get(\Magento\CatalogInventory\Model\ResourceModel\Indexer\Stock\QueryProcessorComposite::class);
         }
         return $this->queryProcessorComposite;
     }
