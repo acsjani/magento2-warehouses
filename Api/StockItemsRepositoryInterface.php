@@ -51,6 +51,8 @@ interface StockItemsRepositoryInterface
 
     public function getById($itemId);
 
+    public function getByProductId($productId, $stockId = 1);
+
     public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria);
 
     public function delete(\Eadesigndev\Warehouses\Api\Data\StockItemsInterface $item);
