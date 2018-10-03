@@ -84,9 +84,9 @@ class Item extends \Eadesigndev\Warehouses\Model\Stock\Item implements IdentityI
             $stockConfiguration,
             $stockRegistry,
             $stockItemRepository,
+            $validations,
             $resource,
             $resourceCollection,
-            $validations,
             $data
         );
 
