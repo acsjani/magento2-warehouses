@@ -51,6 +51,12 @@ interface StockItemsRepositoryInterface
 
     public function getById($itemId);
 
+    /**
+     * @param     $productId
+     * @param int $stockId
+     *
+     * @return StockItemsInterface
+     */
     public function getByProductId($productId, $stockId = 1);
 
     public function getList(\Magento\Framework\Api\SearchCriteriaInterface $searchCriteria);
