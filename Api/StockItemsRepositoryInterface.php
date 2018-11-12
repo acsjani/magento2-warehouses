@@ -55,7 +55,7 @@ interface StockItemsRepositoryInterface
      * @param     $productId
      * @param int $stockId
      *
-     * @return StockItemsInterface
+     * @return Data\StockItemsInterface
      */
     public function getByProductId($productId, $stockId = 1);
 

@@ -19,8 +19,8 @@
 
 namespace Eadesigndev\Warehouses\Model;
 
-
 use Magento\Framework\Exception\CouldNotSaveException;
+use Magento\Framework\Exception\NoSuchEntityException;
 
 /**
  * Class Stock
@@ -38,8 +38,7 @@ class StockItemsRepository implements \Eadesigndev\Warehouses\Api\StockItemsRepo
     public function __construct(
         \Eadesigndev\Warehouses\Model\ResourceModel\Stock\Item $itemResource,
         \Eadesigndev\Warehouses\Model\StockItemsFactory $itemFactory
-    )
-    {
+    ) {
         $this->itemResource = $itemResource;
         $this->itemFactory = $itemFactory;
     }
@@ -51,10 +50,12 @@ class StockItemsRepository implements \Eadesigndev\Warehouses\Api\StockItemsRepo
         try {
             $this->itemResource->save($item);
         } catch (\Exception $exception) {
-            throw new CouldNotSaveException(__(
-                'Could not save the zone: %1',
-                $exception->getMessage()
-            ));
+            throw new CouldNotSaveException(
+                __(
+                    'Could not save the zone: %1',
+                    $exception->getMessage()
+                )
+            );
         }
 
         return $item;
@@ -70,14 +71,10 @@ class StockItemsRepository implements \Eadesigndev\Warehouses\Api\StockItemsRepo
 
         if (!isset($this->itemInstances[$itemId])) {
             $item = $this->itemFactory->create();
-
             $this->itemResource->load($item, $itemId);
-
-
             if (!$item->getId()) {
                 //todo add exception with message here
             }
-
             $this->itemInstances[$itemId] = $item;
         }
 
@@ -88,7 +85,7 @@ class StockItemsRepository implements \Eadesigndev\Warehouses\Api\StockItemsRepo
      * @param     $productId
      * @param int $stockId
      *
-     * @return StockItemsInterface
+     * @return Eadesigndev\Warehouses\Api\Data\StockItemsInterface
      */
     public function getByProductId($productId, $stockId = 1)
     {
