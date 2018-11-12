@@ -92,7 +92,9 @@ class StockItemsRepository implements \Eadesigndev\Warehouses\Api\StockItemsRepo
         $item = $this->itemFactory->create();
         $this->itemResource->loadByProductId($item, $productId, $stockId);
         if (!$item->getItemId()) {
-            throw new NoSuchEntityException("Stock item not found");
+            $item->setProductId($productId);
+            $item->setStockId($stockId);
+            $item->setStoreId($stockId);
         }
 
         return $item;
